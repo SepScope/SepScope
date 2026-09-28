@@ -195,6 +195,7 @@ describe("SEP-1 dependency handling", () => {
 
   it("skips everything downstream on a timeout", async () => {
     const results = (await run("hang", 20)).results;
-    expect(results.map((r) => r.status)).toEqual(["fail", "skipped", "skipped", "skipped"]);
+    expect(results[0]).toMatchObject({ checkId: "sep1.reachable", status: "fail" });
+    expect(results.slice(1).map((r) => r.status)).toEqual(results.slice(1).map(() => "skipped"));
   });
 });

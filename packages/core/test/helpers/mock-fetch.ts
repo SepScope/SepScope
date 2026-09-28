@@ -1,7 +1,10 @@
 /**
  * Mocked HTTP for check tests. Map each URL to a canned response, or to
  * "hang" to simulate a server that never answers (for timeout tests).
- * Unmapped URLs reject like a DNS failure. Every call is recorded.
+ * A route may also be a function of the requested URL, for responses that
+ * depend on query parameters. Routes match the full URL first, then the URL
+ * without its query string. Unmapped URLs reject like a DNS failure. Every
+ * call is recorded.
  */
 export interface MockResponse {
   status?: number;
@@ -11,7 +14,7 @@ export interface MockResponse {
   url?: string;
 }
 
-export type MockRoute = MockResponse | "hang";
+export type MockRoute = MockResponse | "hang" | ((url: URL) => MockResponse | "hang");
 
 export interface MockFetch {
   fetch: typeof globalThis.fetch;
@@ -23,8 +26,10 @@ export function mockFetch(routes: Record<string, MockRoute>): MockFetch {
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = input instanceof Request ? input.url : input.toString();
     calls.push({ url, init });
-    const route = routes[url];
-    if (route === undefined) throw new TypeError(`fetch failed: getaddrinfo ENOTFOUND ${new URL(url).host}`);
+    const parsed = new URL(url);
+    let route = routes[url] ?? routes[`${parsed.origin}${parsed.pathname}`];
+    if (typeof route === "function") route = route(parsed);
+    if (route === undefined) throw new TypeError(`fetch failed: getaddrinfo ENOTFOUND ${parsed.host}`);
     if (route === "hang") {
       return new Promise<Response>((_, reject) => {
         init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));

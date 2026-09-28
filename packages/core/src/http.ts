@@ -30,6 +30,10 @@ export async function httpGet(
   }
 }
 
+/** fetch reports network failures as a bare "fetch failed"; include the underlying cause. */
 export function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+  if (!(err instanceof Error)) return String(err);
+  const cause = err.cause as { code?: unknown; message?: unknown } | undefined;
+  const detail = [cause?.code, cause?.message].filter((part) => typeof part === "string" && part !== "");
+  return detail.length > 0 ? `${err.message} (${[...new Set(detail)].join(": ")})` : err.message;
 }

@@ -1,9 +1,10 @@
 import { sep1Checks } from "./checks/sep1.js";
+import { sep10Checks } from "./checks/sep10.js";
 import { DEFAULT_TIMEOUT_MS, errorMessage } from "./http.js";
 import type { Check, CheckContext, CheckResult, StellarToml } from "./types.js";
 
 /** Every registered check, in run order. A check must come after its dependencies. */
-export const allChecks: Check[] = [...sep1Checks];
+export const allChecks: Check[] = [...sep1Checks, ...sep10Checks];
 
 export interface RunOptions {
   checks?: Check[];

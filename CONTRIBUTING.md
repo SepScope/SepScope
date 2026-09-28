@@ -24,7 +24,7 @@ These rules apply to **every** implementation in this repository: every check, e
   |---|---|
   | Malformed payload (TOML, JSON, XDR) | Return a syntactically broken body |
   | Missing or wrong required header (e.g. CORS) | Omit it, or return a different value |
-  | Bad cryptography (e.g. a SEP-10 challenge signed by the wrong key) | Sign the fixture with a key other than the toml's `SIGNING_KEY` |
+  | Bad cryptography (e.g. a SEP-10 challenge signed by the wrong key) | Sign the fixture with a key other than the toml's `SIGNING_KEY` (see `test/checks/sep10.test.ts`) |
   | Timeout | Route the URL to `"hang"` and pass a small `timeoutMs` |
   | Non-2xx status and network errors | Return e.g. `status: 500`, or leave the URL unmapped |
 

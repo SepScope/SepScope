@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_TIMEOUT_MS, httpGet } from "../src/http.js";
+import { DEFAULT_TIMEOUT_MS, errorMessage, httpGet } from "../src/http.js";
 import { allChecks, runChecks } from "../src/runner.js";
 import type { Check } from "../src/types.js";
 import { mockFetch } from "./helpers/mock-fetch.js";
@@ -65,5 +65,19 @@ describe("httpGet", () => {
   it("rethrows non-timeout errors unchanged", async () => {
     const ctx = { domain: "x", fetch: mockFetch({}).fetch, timeoutMs: 1000 };
     await expect(httpGet(ctx, "https://nowhere.example/")).rejects.toThrow(/ENOTFOUND/);
+  });
+});
+
+describe("errorMessage", () => {
+  it("includes the cause of a network failure", () => {
+    const cause = Object.assign(new Error("connect ETIMEDOUT 1.2.3.4:443"), { code: "ETIMEDOUT" });
+    expect(errorMessage(new TypeError("fetch failed", { cause }))).toBe(
+      "fetch failed (ETIMEDOUT: connect ETIMEDOUT 1.2.3.4:443)",
+    );
+    expect(errorMessage(new TypeError("fetch failed", { cause: { code: "ECONNRESET" } }))).toBe(
+      "fetch failed (ECONNRESET)",
+    );
+    expect(errorMessage(new Error("plain"))).toBe("plain");
+    expect(errorMessage("text")).toBe("text");
   });
 });
