@@ -1,5 +1,5 @@
 
-# SEPscope [![CI](https://github.com/<org>/sepscope/actions/workflows/ci.yml/badge.svg)](https://github.com/<org>/sepscope/actions/workflows/ci.yml) [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE) [![Language: TypeScript](https://img.shields.io/badge/Language-TypeScript-3178c6.svg)](https://www.typescriptlang.org/) [![Node](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
+# SEPscope [![CI](https://github.com/SepScope/SepScope/actions/workflows/ci.yml/badge.svg)](https://github.com/SepScope/SepScope/actions/workflows/ci.yml) [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE) [![Language: TypeScript](https://img.shields.io/badge/Language-TypeScript-3178c6.svg)](https://www.typescriptlang.org/) [![Node](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
 
 Open health, compliance, and uptime monitoring for Stellar anchors.
 
@@ -170,7 +170,7 @@ Both are implemented as pure functions in `packages/core/src/scoring.ts`.
 The fastest way to run the full stack:
 
 ```bash
-git clone https://github.com/<org>/sepscope.git
+git clone https://github.com/SepScope/SepScope.git
 cd sepscope
 cp .env.example .env
 docker compose up --build
@@ -185,7 +185,7 @@ The first results appear once the first check interval completes.
 ### Manual Setup
 
 ```bash
-git clone https://github.com/<org>/sepscope.git
+git clone https://github.com/SepScope/SepScope.git
 cd sepscope
 pnpm install
 cp .env.example .env        # point DATABASE_URL at your Postgres
