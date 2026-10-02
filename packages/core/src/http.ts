@@ -30,6 +30,33 @@ export async function httpGet(
   }
 }
 
+export type HttpResult =
+  | { ok: true; url: string; status: number; headers: Headers; body: string; latencyMs: number }
+  | { ok: false; error: string; latencyMs: number };
+
+/**
+ * Waits for ctx.throttle, then GETs `url` and reads the body. Latency covers
+ * only the request itself, not time spent queued behind the throttle. Never
+ * throws: failures come back as `{ ok: false }` with a readable error.
+ */
+export async function fetchText(
+  ctx: CheckContext,
+  url: string,
+  headers: Record<string, string> = {},
+): Promise<HttpResult> {
+  await ctx.throttle?.(url);
+  const started = performance.now();
+  const latencyMs = () => Math.round(performance.now() - started);
+  try {
+    const res = await httpGet(ctx, url, headers);
+    const body = await res.text();
+    // Redirects are followed, so report where we ended up, not where we started.
+    return { ok: true, url: res.url || url, status: res.status, headers: res.headers, body, latencyMs: latencyMs() };
+  } catch (err) {
+    return { ok: false, error: errorMessage(err), latencyMs: latencyMs() };
+  }
+}
+
 /** fetch reports network failures as a bare "fetch failed"; include the underlying cause. */
 export function errorMessage(err: unknown): string {
   if (!(err instanceof Error)) return String(err);

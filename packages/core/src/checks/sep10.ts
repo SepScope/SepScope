@@ -1,5 +1,5 @@
 import { Keypair, StrKey, WebAuth } from "@stellar/stellar-sdk";
-import { errorMessage, httpGet } from "../http.js";
+import { errorMessage, fetchText } from "../http.js";
 import type { Check, CheckResult } from "../types.js";
 
 /**
@@ -46,17 +46,10 @@ export const sep10Challenge: Check = {
     url.searchParams.set("account", client);
     url.searchParams.set("home_domain", ctx.domain);
 
-    const started = performance.now();
-    let status: number;
-    let text: string;
-    try {
-      const res = await httpGet(ctx, url.toString(), { Accept: "application/json" });
-      status = res.status;
-      text = await res.text();
-    } catch (err) {
-      return fail(errorMessage(err), { latencyMs: Math.round(performance.now() - started) });
-    }
-    const latencyMs = Math.round(performance.now() - started);
+    const res = await fetchText(ctx, url.toString(), { Accept: "application/json" });
+    const { latencyMs } = res;
+    if (!res.ok) return fail(res.error, { latencyMs });
+    const { status, body: text } = res;
     const detail = { endpoint: String(endpoint), account: client };
 
     if (status !== 200) return fail(`Expected HTTP 200, got ${status}`, { latencyMs, detail });

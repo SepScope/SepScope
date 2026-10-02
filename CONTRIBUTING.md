@@ -28,6 +28,7 @@ These rules apply to **every** implementation in this repository: every check, e
   | Timeout | Route the URL to `"hang"` and pass a small `timeoutMs` |
   | Non-2xx status and network errors | Return e.g. `status: 500`, or leave the URL unmapped |
 
+- Code that touches the database runs its unit tests against an in-memory Postgres from `@sepscope/db/testing` (`createTestDb`, PGlite) with the real migrations applied. Share one database per test file and call `resetTestDb` in `beforeEach`; starting PGlite takes a few seconds.
 - Also test dependency handling: a check whose prerequisite failed must be `skipped`, not `fail`.
 - Tests mirror the source layout: `src/checks/sepN.ts` is tested in `test/checks/sepN.test.ts`, and every check ID appears in a test. `test/conventions.test.ts` enforces this.
 

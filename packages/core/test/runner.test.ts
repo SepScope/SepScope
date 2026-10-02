@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_TIMEOUT_MS, errorMessage, httpGet } from "../src/http.js";
+import { DEFAULT_TIMEOUT_MS, errorMessage, fetchText, httpGet } from "../src/http.js";
 import { allChecks, runChecks } from "../src/runner.js";
 import type { Check } from "../src/types.js";
-import { mockFetch } from "./helpers/mock-fetch.js";
+import { CORS, VALID_TOML, mockFetch } from "./helpers/mock-fetch.js";
 
 const check = (id: string, status: "pass" | "warn" | "fail", dependsOn?: string[]): Check => ({
   id,
@@ -65,6 +65,47 @@ describe("httpGet", () => {
   it("rethrows non-timeout errors unchanged", async () => {
     const ctx = { domain: "x", fetch: mockFetch({}).fetch, timeoutMs: 1000 };
     await expect(httpGet(ctx, "https://nowhere.example/")).rejects.toThrow(/ENOTFOUND/);
+  });
+});
+
+describe("fetchText", () => {
+  const URL_ = "https://anchor.example/x";
+
+  it("waits for the throttle before starting the timeout or the latency clock", async () => {
+    const mock = mockFetch({ [URL_]: { body: "hi" } });
+    const order: string[] = [];
+    const throttle = async (url: string) => {
+      order.push(`throttle ${url}`);
+      // Longer than the timeout: a throttle inside the timeout would abort the request.
+      await new Promise((r) => setTimeout(r, 400));
+    };
+    const ctx = { domain: "x", fetch: mock.fetch, timeoutMs: 250, throttle };
+    const res = await fetchText(ctx, URL_);
+    order.push(`fetch ${mock.calls[0]?.url}`);
+    expect(order).toEqual([`throttle ${URL_}`, `fetch ${URL_}`]);
+    expect(res).toMatchObject({ ok: true, status: 200, body: "hi", url: URL_ });
+    // Latency that included the throttle would be at least 400ms.
+    expect(res.latencyMs).toBeLessThan(250);
+  });
+
+  it("returns failures instead of throwing", async () => {
+    const res = await fetchText({ domain: "x", fetch: mockFetch({}).fetch, timeoutMs: 1000 }, URL_);
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/ENOTFOUND/) });
+    expect(res.latencyMs).toBeTypeOf("number");
+  });
+});
+
+describe("runChecks throttle", () => {
+  it("passes the throttle to every request a check makes", async () => {
+    const tomlUrl = "https://anchor.example/.well-known/stellar.toml";
+    const mock = mockFetch({
+      [tomlUrl]: { body: VALID_TOML, headers: CORS },
+    });
+    const throttled: string[] = [];
+    await runChecks("anchor.example", { fetch: mock.fetch, throttle: async (url) => void throttled.push(url) });
+    expect(throttled).toEqual(mock.calls.map((c) => c.url));
+    expect(throttled).toContain(tomlUrl);
+    expect(throttled.length).toBeGreaterThan(1);
   });
 });
 
