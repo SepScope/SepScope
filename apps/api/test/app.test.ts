@@ -61,6 +61,7 @@ describe("GET /v1/anchors", () => {
         domain: "a.example",
         network: "testnet",
         name: "Anchor A",
+        reachable: true,
         score: 66.7,
         uptime24h: 100,
         uptime7d: 50,
@@ -76,7 +77,14 @@ describe("GET /v1/anchors", () => {
     const { body } = await get("/v1/anchors");
     expect(body.map((a: { domain: string }) => a.domain)).toEqual(["b.example", "z.example"]);
     expect(body[0]).toMatchObject({ score: 100, uptime24h: null, uptime7d: null });
-    expect(body[1]).toMatchObject({ score: null, uptime24h: null, uptime7d: null, lastCheckedAt: null });
+    expect(body[1]).toMatchObject({ reachable: null, score: null, uptime24h: null, uptime7d: null, lastCheckedAt: null });
+  });
+
+  it("reports an anchor whose toml was unreachable in the latest run", async () => {
+    const a = await addAnchor(conn.db, "down.example");
+    await addRun(conn.db, a.id, hoursAgo(3), [reachable("pass")]);
+    await addRun(conn.db, a.id, hoursAgo(1), [reachable("fail"), { checkId: "sep1.cors", status: "skipped" }]);
+    expect((await get("/v1/anchors")).body[0]).toMatchObject({ reachable: false, score: 0, uptime24h: 50 });
   });
 
   it("filters by network", async () => {

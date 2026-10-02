@@ -3,3 +3,5 @@ dist/
 coverage/
 *.tsbuildinfo
 .env
+.next/
+next-env.d.ts
