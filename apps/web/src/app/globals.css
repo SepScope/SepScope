@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/* Dark mode follows data-theme on <html>, which an inline script sets before first paint. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  color-scheme: light;
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-2: #f0f0ed;
+  --border: #e3e3de;
+  --text: #1b1b18;
+  --muted: #6b6b63;
+  --accent: #3b5bdb;
+  --ok: #2f9e44;
+  --ok-soft: #e6f4e8;
+  --warn: #c27c0e;
+  --warn-soft: #fbf1df;
+  --fail: #d6336c;
+  --fail-soft: #fbe7ee;
+  --skip: #8a8a80;
+  --skip-soft: #efefeb;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111113;
+  --surface: #19191c;
+  --surface-2: #222226;
+  --border: #2c2c31;
+  --text: #ececef;
+  --muted: #9a9aa3;
+  --accent: #7c9cff;
+  --ok: #51cf66;
+  --ok-soft: #16301c;
+  --warn: #fab005;
+  --warn-soft: #33290f;
+  --fail: #ff6b8b;
+  --fail-soft: #3a1822;
+  --skip: #8b8b94;
+  --skip-soft: #26262b;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-fail: var(--fail);
+  --color-fail-soft: var(--fail-soft);
+  --color-skip: var(--skip);
+  --color-skip-soft: var(--skip-soft);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes pulse-soft {
+  50% {
+    opacity: 0.45;
+  }
+}
+.skeleton {
+  background: var(--surface-2);
+  border-radius: 4px;
+  animation: pulse-soft 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

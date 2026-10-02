@@ -12,6 +12,10 @@ export const anchorSummary = z
     domain: z.string(),
     network,
     name: z.string(),
+    reachable: z
+      .boolean()
+      .nullable()
+      .describe("Whether stellar.toml was reachable (sep1.reachable passed) in the latest run; null before the first run."),
     score: percent.describe("Percentage of non-skipped checks that passed in the latest run; null before the first run."),
     uptime24h: percent.describe("Percentage of sep1.reachable passes over the last 24 hours; null without data."),
     uptime7d: percent.describe("Percentage of sep1.reachable passes over the last 7 days; null without data."),

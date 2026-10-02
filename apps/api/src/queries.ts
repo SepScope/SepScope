@@ -14,6 +14,7 @@ export interface AnchorSummaryView {
   domain: string;
   network: "pubnet" | "testnet";
   name: string;
+  reachable: boolean | null;
   score: number | null;
   uptime24h: number | null;
   uptime7d: number | null;
@@ -95,6 +96,7 @@ async function summarize(db: Database, rows: AnchorRow[], now: Date) {
       domain: a.domain,
       network: a.network as AnchorSummaryView["network"],
       name: a.name,
+      reachable: run ? run.results.some((r) => r.checkId === "sep1.reachable" && r.status === "pass") : null,
       score: round1(run ? score(run.results) : null),
       uptime24h: round1(up.uptime24h),
       uptime7d: round1(up.uptime7d),

@@ -227,6 +227,7 @@ All configuration is read from environment variables. See `.env.example` for the
 | `RATE_LIMIT_PER_MINUTE` | `120` | API requests allowed per client IP per minute (`/healthz` is exempt) |
 | `TRUST_PROXY` | `false` | `true`, or a number of proxy hops, when the API runs behind a reverse proxy, so rate limits apply per client rather than to the proxy |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | API base URL used by the dashboard |
+| `API_URL` | `NEXT_PUBLIC_API_URL` | API base URL for the dashboard's server-side requests, when the server reaches the API at a different address (e.g. a Docker service name) |
 | `LOG_LEVEL` | `info` | pino log level |
 | `ANCHORS_FILE` | `anchors.json` at the repo root | Path to the anchor registry the worker syncs on start |
 | `RUN_LIVE_TESTS` | unset | Set to `1` to run tests against live anchors |
@@ -263,6 +264,8 @@ curl https://<your-api>/v1/anchors
   {
     "domain": "testanchor.stellar.org",
     "network": "testnet",
+    "name": "Stellar Test Anchor",
+    "reachable": true,
     "score": 100,
     "uptime24h": 100,
     "uptime7d": 99.4,
