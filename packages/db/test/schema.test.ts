@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { anchors, checkResults, checkRuns, createDb, type DbConnection } from "../src/index.js";
+import { eq, getTableName } from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/pg-core";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { anchors, checkResults, checkRuns, createDb, withAdvisoryLock, type DbConnection, type LockablePool } from "../src/index.js";
 import { createTestDb, resetTestDb } from "../src/testing.js";
 
 let conn: DbConnection;
@@ -79,6 +80,19 @@ describe("schema", () => {
   });
 });
 
+describe("foreign keys", () => {
+  it.each([
+    [checkRuns, "anchors"],
+    [checkResults, "check_runs"],
+  ] as const)("%# points at %s and cascades deletes", (table, target) => {
+    const [fk] = getTableConfig(table).foreignKeys;
+    const ref = fk!.reference();
+    expect(getTableName(ref.foreignTable)).toBe(target);
+    expect(ref.foreignColumns.map((c) => c.name)).toEqual(["id"]);
+    expect(fk!.onDelete).toBe("cascade");
+  });
+});
+
 describe("createDb", () => {
   it("does not connect until the first query", async () => {
     const pg = createDb("postgres://user:pass@127.0.0.1:1/none");
@@ -90,5 +104,44 @@ describe("createDb", () => {
     const pg = createDb("postgres://user:pass@127.0.0.1:1/none");
     await expect(pg.migrate()).rejects.toThrow();
     await pg.close();
+  });
+});
+
+describe("withAdvisoryLock", () => {
+  function fakePool() {
+    const log: string[] = [];
+    const client = {
+      query: vi.fn(async (text: string, values: unknown[]) => void log.push(`${text} ${values.join(",")}`)),
+      release: vi.fn(() => void log.push("release")),
+    };
+    const pool: LockablePool = { connect: async () => client };
+    return { pool, log, client };
+  }
+
+  it("locks, runs, unlocks and releases, in that order", async () => {
+    const { pool, log } = fakePool();
+    const result = await withAdvisoryLock(pool, 42, async () => {
+      log.push("fn");
+      return "done";
+    });
+    expect(result).toBe("done");
+    expect(log).toEqual(["select pg_advisory_lock($1) 42", "fn", "select pg_advisory_unlock($1) 42", "release"]);
+  });
+
+  it("unlocks and releases when fn throws", async () => {
+    const { pool, log } = fakePool();
+    await expect(withAdvisoryLock(pool, 42, async () => Promise.reject(new Error("migration failed")))).rejects.toThrow(
+      "migration failed",
+    );
+    expect(log).toEqual(["select pg_advisory_lock($1) 42", "select pg_advisory_unlock($1) 42", "release"]);
+  });
+
+  it("releases the connection and skips fn when the lock cannot be taken", async () => {
+    const { pool, client } = fakePool();
+    client.query.mockRejectedValueOnce(new Error("lock failed"));
+    const fn = vi.fn();
+    await expect(withAdvisoryLock(pool, 42, fn)).rejects.toThrow("lock failed");
+    expect(fn).not.toHaveBeenCalled();
+    expect(client.release).toHaveBeenCalledTimes(1);
   });
 });

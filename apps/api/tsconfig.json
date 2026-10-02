@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    // Typecheck against workspace packages' sources, so no build is needed first.
+    "paths": {
+      "@sepscope/core": ["../../packages/core/src/index.ts"],
+      "@sepscope/db": ["../../packages/db/src/index.ts"],
+      "@sepscope/db/testing": ["../../packages/db/src/testing.ts"]
+    }
+  },
+  "include": ["src", "test", "vitest.config.ts"]
+}
