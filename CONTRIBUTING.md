@@ -36,6 +36,7 @@ These rules apply to **every** implementation in this repository: every check, e
 
 - Anything that talks to real anchors gets an integration test in a `test/live/*.live.test.ts` file, wrapped in `describe.skipIf(process.env.RUN_LIVE_TESTS !== "1")`.
 - The core suite runs **all registered checks** against `testanchor.stellar.org` (`packages/core/test/live/testanchor.live.test.ts`). A new check is covered automatically once it is added to `allChecks`. Update that test's expectations if the new check cannot pass against the test anchor.
+- Any process that runs checks, including a live test, calls `configureNetwork()` from `@sepscope/core` first. Node's default 250ms per-address connect limit otherwise makes requests fail with `ETIMEDOUT` under load, reporting healthy anchors as unreachable.
 - CI never sets `RUN_LIVE_TESTS`, so it stays fast and does not depend on third-party uptime. Run live tests locally before merging changes to check behavior:
 
   ```bash
