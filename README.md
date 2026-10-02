@@ -223,6 +223,9 @@ All configuration is read from environment variables. See `.env.example` for the
 | `DATABASE_URL` | — | Postgres connection string |
 | `CHECK_INTERVAL_MINUTES` | `15` | How often each anchor is checked |
 | `API_PORT` | `8080` | Port for the API server |
+| `API_HOST` | `0.0.0.0` | Interface the API server binds to |
+| `RATE_LIMIT_PER_MINUTE` | `120` | API requests allowed per client IP per minute (`/healthz` is exempt) |
+| `TRUST_PROXY` | `false` | `true`, or a number of proxy hops, when the API runs behind a reverse proxy, so rate limits apply per client rather than to the proxy |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | API base URL used by the dashboard |
 | `LOG_LEVEL` | `info` | pino log level |
 | `ANCHORS_FILE` | `anchors.json` at the repo root | Path to the anchor registry the worker syncs on start |
@@ -291,6 +294,10 @@ curl https://<your-api>/v1/anchors/testanchor.stellar.org
 ```bash
 curl "https://<your-api>/v1/anchors/testanchor.stellar.org/history?check=sep24.info&range=7d"
 ```
+
+`range` is `24h` (the default) or `7d`. Omit `check` to get every check. Results are oldest first.
+
+Other endpoints: `GET /v1/anchors?network=pubnet` filters the list by network, and `GET /healthz` reports whether the API can reach its database. Scores and uptimes are `null` until there is data for them.
 
 ### Add an anchor
 

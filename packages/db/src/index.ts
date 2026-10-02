@@ -21,13 +21,37 @@ export interface DbConnection {
   close(): Promise<void>;
 }
 
+/** Arbitrary key for the advisory lock that serializes migrations across processes. */
+export const MIGRATION_LOCK_ID = 7_340_105_001;
+
+/** The part of pg.Pool that withAdvisoryLock needs. */
+export interface LockablePool {
+  connect(): Promise<{ query(text: string, values: unknown[]): Promise<unknown>; release(): void }>;
+}
+
+/** Runs `fn` while holding a session-level Postgres advisory lock on its own connection. */
+export async function withAdvisoryLock<T>(pool: LockablePool, lockId: number, fn: () => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("select pg_advisory_lock($1)", [lockId]);
+    try {
+      return await fn();
+    } finally {
+      await client.query("select pg_advisory_unlock($1)", [lockId]);
+    }
+  } finally {
+    client.release();
+  }
+}
+
 /** Connects to Postgres. The pool connects lazily, on the first query. */
 export function createDb(databaseUrl: string): DbConnection {
   const pool = new pg.Pool({ connectionString: databaseUrl });
   const db = drizzle(pool, { schema });
   return {
     db,
-    migrate: () => pgMigrate(db, { migrationsFolder: MIGRATIONS_FOLDER }),
+    // The worker and the API both migrate on start; the lock stops them racing.
+    migrate: () => withAdvisoryLock(pool, MIGRATION_LOCK_ID, () => pgMigrate(db, { migrationsFolder: MIGRATIONS_FOLDER })),
     close: () => pool.end(),
   };
 }
