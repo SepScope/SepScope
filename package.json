@@ -9,7 +9,9 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "test:coverage": "pnpm -r test:coverage"
+    "test:coverage": "pnpm -r test:coverage",
+    "db:generate": "pnpm --filter @sepscope/db db:generate",
+    "db:migrate": "pnpm --filter @sepscope/db db:migrate"
   },
   "packageManager": "pnpm@12.6.0"
 }

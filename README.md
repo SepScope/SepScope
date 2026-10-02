@@ -83,6 +83,7 @@ sequenceDiagram
 | Component | Path | Description | Stack |
 |---|---|---|---|
 | Core | `packages/core` | Pure check implementations, TOML parsing, scoring functions | TypeScript, `smol-toml`, `@stellar/stellar-sdk` |
+| Database | `packages/db` | Shared schema and SQL migrations, used by the worker and the API | Drizzle ORM, Postgres |
 | Worker | `apps/worker` | Syncs the anchor registry and runs checks on a schedule | Node.js, Drizzle ORM |
 | API | `apps/api` | Public read-only REST API with OpenAPI docs | Fastify, Zod |
 | Dashboard | `apps/web` | Public dashboard for anchors and check results | Next.js (App Router), Tailwind |
@@ -129,7 +130,7 @@ Checks declare their dependencies, so a failed toml fetch skips the checks that 
 
 ### apps/worker
 
-The worker syncs `anchors.json` into the database on start and then runs every anchor's checks every `CHECK_INTERVAL_MINUTES`. It checks at most four anchors at once and never sends more than one request per second to the same host. Each check's outcome is isolated: an exception in one check is recorded as a `fail` for that check and never aborts the rest of the run.
+The worker syncs `anchors.json` into the database on start and then runs every anchor's checks every `CHECK_INTERVAL_MINUTES`. It checks at most four anchors at once and never sends more than one request per second to the same host. Each check's outcome is isolated: an exception in one check is recorded as a `fail` for that check and never aborts the rest of the run, and a failure in one anchor's run never stops the others. Cycles are measured start to start and never overlap; one that overruns the interval is followed immediately by the next. The per-host limit is enforced before each request's timeout and latency clock start, so queueing never counts against an anchor. Anchors removed from `anchors.json` keep their history but are no longer checked.
 
 ### apps/api
 
@@ -224,6 +225,7 @@ All configuration is read from environment variables. See `.env.example` for the
 | `API_PORT` | `8080` | Port for the API server |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | API base URL used by the dashboard |
 | `LOG_LEVEL` | `info` | pino log level |
+| `ANCHORS_FILE` | `anchors.json` at the repo root | Path to the anchor registry the worker syncs on start |
 | `RUN_LIVE_TESTS` | unset | Set to `1` to run tests against live anchors |
 
 ## Deployment
