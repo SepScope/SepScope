@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./version.js";
 export { DEFAULT_TIMEOUT_MS, TimeoutError, fetchText, httpGet, type HttpResult } from "./http.js";
+export * from "./scoring.js";
 export * from "./checks/sep1.js";
 export * from "./checks/sep10.js";
 export * from "./checks/sep6.js";
