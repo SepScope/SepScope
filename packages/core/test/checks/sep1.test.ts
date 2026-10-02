@@ -50,6 +50,12 @@ describe("sep1.reachable", () => {
     expect(sent.get("origin")).toBe(CORS_PROBE_ORIGIN);
   });
 
+  it("falls back to the requested URL when the response has none", async () => {
+    const { ctx } = context({ body: VALID_TOML, url: "" });
+    expect((await sep1Reachable.run(ctx)).status).toBe("pass");
+    expect(ctx.tomlResponse?.url).toBe(TOML_URL);
+  });
+
   it("fails on a non-200 status", async () => {
     const { ctx } = context({ status: 404, body: "not found" });
     const result = await sep1Reachable.run(ctx);
