@@ -3,4 +3,8 @@ export * from "./version.js";
 export { DEFAULT_TIMEOUT_MS, TimeoutError, httpGet } from "./http.js";
 export * from "./checks/sep1.js";
 export * from "./checks/sep10.js";
+export * from "./checks/sep6.js";
+export * from "./checks/sep24.js";
+export * from "./checks/sep38.js";
+export { enabledAssets, infoCheck, infoUrl, type InfoCheckOptions } from "./info.js";
 export { allChecks, runChecks, type RunOptions, type RunReport } from "./runner.js";
