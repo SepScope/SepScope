@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { errorMessage, httpGet } from "./http.js";
+import { fetchText } from "./http.js";
 import type { Check, CheckResult } from "./types.js";
 
 export interface InfoCheckOptions<T> {
@@ -50,17 +50,10 @@ export function infoCheck<T>({ id, field, schema, detail }: InfoCheckOptions<T>)
       if (base.protocol !== "https:") return fail(`${field} is not HTTPS: ${base}`);
       const url = infoUrl(base);
 
-      const started = performance.now();
-      let status: number;
-      let text: string;
-      try {
-        const res = await httpGet(ctx, url, { Accept: "application/json" });
-        status = res.status;
-        text = await res.text();
-      } catch (err) {
-        return fail(errorMessage(err), { latencyMs: Math.round(performance.now() - started) });
-      }
-      const latencyMs = Math.round(performance.now() - started);
+      const res = await fetchText(ctx, url, { Accept: "application/json" });
+      const { latencyMs } = res;
+      if (!res.ok) return fail(res.error, { latencyMs });
+      const { status, body: text } = res;
 
       if (status !== 200) return fail(`Expected HTTP 200 from ${url}, got ${status}`, { latencyMs });
       let body: unknown;

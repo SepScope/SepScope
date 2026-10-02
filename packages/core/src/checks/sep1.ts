@@ -1,5 +1,5 @@
 import { parse } from "smol-toml";
-import { errorMessage, httpGet } from "../http.js";
+import { errorMessage, fetchText } from "../http.js";
 import type { Check, CheckContext, CheckResult } from "../types.js";
 
 export const REQUIRED_FIELDS = ["NETWORK_PASSPHRASE", "SIGNING_KEY"] as const;
@@ -47,32 +47,19 @@ export const sep1Reachable: Check = {
       return { checkId: id, status: "fail", error: `Invalid domain: ${ctx.domain}` };
     }
 
-    const started = performance.now();
-    let res: Response;
-    let body: string;
-    try {
-      res = await httpGet(ctx, url, { Origin: CORS_PROBE_ORIGIN });
-      body = await res.text();
-    } catch (err) {
-      return {
-        checkId: id,
-        status: "fail",
-        latencyMs: Math.round(performance.now() - started),
-        error: errorMessage(err),
-      };
-    }
-    const latencyMs = Math.round(performance.now() - started);
-    // Redirects are followed, so check where we ended up, not where we started.
-    const finalUrl = res.url || url;
+    const res = await fetchText(ctx, url, { Origin: CORS_PROBE_ORIGIN });
+    const { latencyMs } = res;
+    if (!res.ok) return { checkId: id, status: "fail", latencyMs, error: res.error };
+    const { url: finalUrl, status, headers, body } = res;
 
     if (!finalUrl.startsWith("https://")) {
       return { checkId: id, status: "fail", latencyMs, error: `Served over non-HTTPS URL ${finalUrl}` };
     }
-    if (res.status !== 200) {
-      return { checkId: id, status: "fail", latencyMs, error: `Expected HTTP 200, got ${res.status}` };
+    if (status !== 200) {
+      return { checkId: id, status: "fail", latencyMs, error: `Expected HTTP 200, got ${status}` };
     }
 
-    ctx.tomlResponse = { url: finalUrl, status: res.status, headers: res.headers, body, latencyMs };
+    ctx.tomlResponse = { url: finalUrl, status, headers, body, latencyMs };
     return { checkId: id, status: "pass", latencyMs };
   },
 };

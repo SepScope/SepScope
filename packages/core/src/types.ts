@@ -24,6 +24,11 @@ export interface CheckContext {
   /** Injectable so every check can be unit-tested with mocked HTTP. */
   fetch: typeof globalThis.fetch;
   timeoutMs: number;
+  /**
+   * Awaited before every request, outside its timeout and latency. The worker
+   * uses it to keep to one request per second per host.
+   */
+  throttle?: (url: string) => Promise<void>;
   /** Set by sep1.reachable. */
   tomlResponse?: TomlResponse;
   /** Set by sep1.parse; later checks discover their endpoints here. */

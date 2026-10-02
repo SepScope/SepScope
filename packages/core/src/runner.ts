@@ -13,6 +13,7 @@ export interface RunOptions {
   checks?: Check[];
   fetch?: typeof globalThis.fetch;
   timeoutMs?: number;
+  throttle?: (url: string) => Promise<void>;
 }
 
 export interface RunReport {
@@ -33,6 +34,7 @@ export async function runChecks(domain: string, options: RunOptions = {}): Promi
     domain,
     fetch: options.fetch ?? globalThis.fetch,
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    throttle: options.throttle,
   };
   const statuses = new Map<string, string>();
   const results: CheckResult[] = [];
