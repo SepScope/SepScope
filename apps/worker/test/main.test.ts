@@ -4,7 +4,9 @@ import { join } from "node:path";
 import { anchors, checkResults, checkRuns, type DbConnection } from "@sepscope/db";
 import { createTestDb, resetTestDb } from "@sepscope/db/testing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import net from "node:net";
 import { main } from "../src/main.js";
+import { CONNECT_ATTEMPT_TIMEOUT_MS } from "@sepscope/core";
 import type { Timers } from "../src/scheduler.js";
 import { anchorFetch, fakeLogger } from "./helpers/fixtures.js";
 
@@ -46,6 +48,7 @@ describe("main", () => {
     const worker = await main(env, { connect, logger, timers, fetch: anchorFetch(["a.example"]) });
 
     expect(connect).toHaveBeenCalledWith("postgres://test");
+    expect(net.getDefaultAutoSelectFamilyAttemptTimeout()).toBe(CONNECT_ATTEMPT_TIMEOUT_MS);
     expect(migrate).toHaveBeenCalledTimes(1);
     expect(await conn.db.select().from(anchors)).toMatchObject([{ domain: "a.example" }]);
     await settle(conn);

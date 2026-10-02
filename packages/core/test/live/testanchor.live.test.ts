@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { configureNetwork } from "../../src/network.js";
 import { allChecks, runChecks } from "../../src/runner.js";
 
 // Hits the real network. Run with RUN_LIVE_TESTS=1; skipped otherwise so CI stays fast.
 describe.skipIf(process.env.RUN_LIVE_TESTS !== "1")("live: testanchor.stellar.org", () => {
   it("runs the full check suite", async () => {
+    configureNetwork(); // as every process that runs checks does
     const report = await runChecks("testanchor.stellar.org");
     // The test anchor declares every endpoint, so nothing should be skipped either.
     const failures = report.results.filter((r) => r.status !== "pass");

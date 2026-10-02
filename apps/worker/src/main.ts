@@ -1,3 +1,4 @@
+import { configureNetwork } from "@sepscope/core";
 import { createDb, type DbConnection } from "@sepscope/db";
 import { pino } from "pino";
 import { loadConfig } from "./config.js";
@@ -20,6 +21,7 @@ export interface Worker {
 /** Migrates, syncs anchors.json, and starts checking every anchor on the configured interval. */
 export async function main(env: Record<string, string | undefined>, deps: MainDeps = { connect: createDb }): Promise<Worker> {
   const config = loadConfig(env);
+  configureNetwork();
   const logger = deps.logger ?? pino({ level: config.logLevel });
   const conn = deps.connect(config.databaseUrl);
   try {
