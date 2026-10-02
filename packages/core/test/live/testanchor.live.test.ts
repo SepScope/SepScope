@@ -5,7 +5,8 @@ import { allChecks, runChecks } from "../../src/runner.js";
 describe.skipIf(process.env.RUN_LIVE_TESTS !== "1")("live: testanchor.stellar.org", () => {
   it("runs the full check suite", async () => {
     const report = await runChecks("testanchor.stellar.org");
-    const failures = report.results.filter((r) => r.status === "fail");
+    // The test anchor declares every endpoint, so nothing should be skipped either.
+    const failures = report.results.filter((r) => r.status !== "pass");
 
     expect(report.results.map((r) => r.checkId)).toEqual(allChecks.map((c) => c.id));
     expect(failures, JSON.stringify(failures, null, 2)).toEqual([]);

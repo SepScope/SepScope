@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^17.1.0",
-    "smol-toml": "^1.9.0"
+    "smol-toml": "^1.9.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^22.20.4",
