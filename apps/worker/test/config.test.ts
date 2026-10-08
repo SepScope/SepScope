@@ -10,6 +10,9 @@ describe("loadConfig", () => {
       anchorsFile: DEFAULT_ANCHORS_FILE,
       concurrency: 4,
       hostIntervalMs: 1000,
+      healthPort: 8081,
+      healthHost: "0.0.0.0",
+      shutdownTimeoutMs: 25_000,
     });
     expect(DEFAULT_ANCHORS_FILE).toMatch(/SepScope\/anchors\.json$/);
   });
@@ -20,9 +23,19 @@ describe("loadConfig", () => {
       CHECK_INTERVAL_MINUTES: "0.5",
       LOG_LEVEL: "debug",
       ANCHORS_FILE: "/tmp/a.json",
+      WORKER_HEALTH_PORT: "9100",
+      WORKER_HEALTH_HOST: "127.0.0.1",
+      SHUTDOWN_TIMEOUT_SECONDS: "5",
       UNRELATED: "",
     });
-    expect(config).toMatchObject({ checkIntervalMs: 30_000, logLevel: "debug", anchorsFile: "/tmp/a.json" });
+    expect(config).toMatchObject({
+      checkIntervalMs: 30_000,
+      logLevel: "debug",
+      anchorsFile: "/tmp/a.json",
+      healthPort: 9100,
+      healthHost: "127.0.0.1",
+      shutdownTimeoutMs: 5000,
+    });
     expect(loadConfig({ DATABASE_URL: "postgres://x", CHECK_INTERVAL_MINUTES: "" }).checkIntervalMs).toBe(900_000);
   });
 
@@ -31,6 +44,8 @@ describe("loadConfig", () => {
     ["the interval is not a number", { DATABASE_URL: "x", CHECK_INTERVAL_MINUTES: "soon" }, /CHECK_INTERVAL_MINUTES/],
     ["the interval is zero", { DATABASE_URL: "x", CHECK_INTERVAL_MINUTES: "0" }, /CHECK_INTERVAL_MINUTES/],
     ["the log level is unknown", { DATABASE_URL: "x", LOG_LEVEL: "loud" }, /LOG_LEVEL/],
+    ["the health port is out of range", { DATABASE_URL: "x", WORKER_HEALTH_PORT: "-1" }, /WORKER_HEALTH_PORT/],
+    ["the shutdown timeout is zero", { DATABASE_URL: "x", SHUTDOWN_TIMEOUT_SECONDS: "0" }, /SHUTDOWN_TIMEOUT_SECONDS/],
   ])("rejects when %s", (_, env, error) => {
     expect(() => loadConfig(env)).toThrow(error);
   });

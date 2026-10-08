@@ -1,4 +1,5 @@
 import { createDb, type DbConnection } from "@sepscope/db";
+import type { FastifyBaseLogger } from "fastify";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 
@@ -9,6 +10,9 @@ export interface MainDeps {
 export interface Server {
   /** The address the server is listening on, e.g. http://127.0.0.1:8080. */
   url: string;
+  logger: FastifyBaseLogger;
+  shutdownTimeoutMs: number;
+  /** Stops accepting connections, lets in-flight requests finish, then closes the database. */
   close(): Promise<void>;
 }
 
@@ -27,6 +31,8 @@ export async function main(env: Record<string, string | undefined>, deps: MainDe
     const url = await app.listen({ port: config.port, host: config.host });
     return {
       url,
+      logger: app.log,
+      shutdownTimeoutMs: config.shutdownTimeoutMs,
       async close() {
         await app.close();
         await conn.close();

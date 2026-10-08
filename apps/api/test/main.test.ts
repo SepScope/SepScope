@@ -27,6 +27,8 @@ describe("main", () => {
 
     await server.close();
     expect(close).toHaveBeenCalledTimes(1);
+    expect(server.shutdownTimeoutMs).toBe(25_000);
+    expect(server.logger.info).toBeTypeOf("function");
     await expect(fetch(`${server.url}/healthz`)).rejects.toThrow();
   });
 

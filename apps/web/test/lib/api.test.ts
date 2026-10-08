@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError, apiBaseUrl, getAnchor, getAnchors } from "@/lib/api";
+import { logger } from "@/lib/log";
 import { detail, mockFetch, summary } from "../helpers/fixtures";
 
 const BASE = "http://localhost:8080";
@@ -38,6 +39,17 @@ describe("getAnchors", () => {
     const err = await getAnchors().catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect((err as Error).message).toMatch(message);
+  });
+
+  it("logs failures as structured JSON on the server", async () => {
+    const error = vi.spyOn(logger, "error").mockImplementation(() => {});
+    mockFetch({ [`${BASE}/v1/anchors`]: { status: 502 } });
+    await getAnchors().catch(() => {});
+    expect(error).toHaveBeenCalledWith(
+      expect.objectContaining({ url: `${BASE}/v1/anchors`, status: 502 }),
+      "The SEPscope API returned HTTP 502 for /v1/anchors",
+    );
+    error.mockRestore();
   });
 
   it("keeps the HTTP status on the error", async () => {
