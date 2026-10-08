@@ -1,3 +1,5 @@
+import { logger } from "./log";
+
 export type Network = "pubnet" | "testnet";
 export type CheckStatus = "pass" | "warn" | "fail" | "skipped";
 
@@ -46,19 +48,23 @@ export function apiBaseUrl(env: Record<string, string | undefined> = process.env
 
 async function request<T>(path: string): Promise<T | null> {
   const url = `${apiBaseUrl()}${path}`;
+  const fail = (err: ApiError, cause?: unknown): never => {
+    logger.error({ url, status: err.status, err: cause ?? err }, err.message);
+    throw err;
+  };
   let res: Response;
   try {
     // Results change every few minutes; always show the latest.
     res = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
   } catch (err) {
-    throw new ApiError(`Could not reach the SEPscope API at ${apiBaseUrl()}: ${(err as Error).message}`);
+    return fail(new ApiError(`Could not reach the SEPscope API at ${apiBaseUrl()}: ${(err as Error).message}`), err);
   }
   if (res.status === 404) return null;
-  if (!res.ok) throw new ApiError(`The SEPscope API returned HTTP ${res.status} for ${path}`, res.status);
+  if (!res.ok) return fail(new ApiError(`The SEPscope API returned HTTP ${res.status} for ${path}`, res.status));
   try {
     return (await res.json()) as T;
-  } catch {
-    throw new ApiError(`The SEPscope API returned invalid JSON for ${path}`, res.status);
+  } catch (err) {
+    return fail(new ApiError(`The SEPscope API returned invalid JSON for ${path}`, res.status), err);
   }
 }
 

@@ -11,7 +11,11 @@ const envSchema = z.object({
   TRUST_PROXY: z
     .union([z.enum(["true", "false"]).transform((v) => v === "true"), z.coerce.number().int().nonnegative()])
     .default(false),
+  SHUTDOWN_TIMEOUT_SECONDS: z.coerce.number().positive().default(25),
 });
+
+/** Every environment variable the API reads; each must be documented in .env.example. */
+export const ENV_VARS = Object.keys(envSchema.shape);
 
 export interface Config {
   databaseUrl: string;
@@ -20,6 +24,8 @@ export interface Config {
   logLevel: z.infer<typeof envSchema>["LOG_LEVEL"];
   rateLimitPerMinute: number;
   trustProxy: boolean | number;
+  /** After SIGTERM, how long to let in-flight requests finish before exiting anyway. */
+  shutdownTimeoutMs: number;
 }
 
 export function loadConfig(env: Record<string, string | undefined>): Config {
@@ -38,5 +44,6 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     logLevel: e.LOG_LEVEL,
     rateLimitPerMinute: e.RATE_LIMIT_PER_MINUTE,
     trustProxy: e.TRUST_PROXY,
+    shutdownTimeoutMs: e.SHUTDOWN_TIMEOUT_SECONDS * 1000,
   };
 }

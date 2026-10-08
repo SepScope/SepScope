@@ -9,6 +9,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./test/setup.ts"],
+    // Keep expected error logs out of the test output.
+    env: { LOG_LEVEL: "silent" },
     include: ["test/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",

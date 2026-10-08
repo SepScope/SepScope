@@ -230,26 +230,66 @@ All configuration is read from environment variables. See `.env.example` for the
 | `API_URL` | `NEXT_PUBLIC_API_URL` | API base URL for the dashboard's server-side requests, when the server reaches the API at a different address (e.g. a Docker service name) |
 | `LOG_LEVEL` | `info` | pino log level |
 | `ANCHORS_FILE` | `anchors.json` at the repo root | Path to the anchor registry the worker syncs on start |
+| `WORKER_HEALTH_PORT` | `8081` | Port for the worker's `GET /healthz` |
+| `WORKER_HEALTH_HOST` | `0.0.0.0` | Interface the worker's health server binds to |
+| `SHUTDOWN_TIMEOUT_SECONDS` | `25` | After SIGTERM, how long the worker and API wait for in-flight work before exiting anyway |
+| `PORT` | `3000` | Port for the dashboard server |
+| `HOSTNAME` | `0.0.0.0` | Interface the dashboard server binds to |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | `sepscope` | Docker Compose only: credentials for the bundled Postgres, from which the containers' `DATABASE_URL` is built |
+| `POSTGRES_PORT`, `WEB_PORT` | `5432`, `3000` | Docker Compose only: host ports for Postgres (bound to `127.0.0.1`) and the dashboard. `API_PORT` is the API's host port. |
 | `RUN_LIVE_TESTS` | unset | Set to `1` to run tests against live anchors |
 
 ## Deployment
 
+Each app has a multi-stage `Dockerfile` (`apps/worker`, `apps/api`, `apps/web`), built from the repository root. Images run as a non-root user, include a `HEALTHCHECK`, and contain production dependencies only.
+
+### Operations
+
+- **Health checks.** Every service serves `GET /healthz`:
+  - The API (port `API_PORT`) returns 503 when it cannot reach Postgres.
+  - The worker (port `WORKER_HEALTH_PORT`) returns 503 when it cannot reach Postgres, or when no check cycle has finished for two intervals plus five minutes.
+  - The dashboard returns 200 whenever its server is up. It does not call the API, so the dashboard keeps serving its error page while the API is down.
+- **Logs.** The worker and the API write one JSON object per line (pino), including startup failures. The dashboard logs its failed API calls the same way. Next.js's own startup and request-error messages are plain text.
+- **Graceful shutdown.** On SIGTERM:
+  - The API stops accepting connections and finishes in-flight requests.
+  - The worker stops starting new anchors and finishes the ones in flight.
+  - Each exits 1 if this takes longer than `SHUTDOWN_TIMEOUT_SECONDS` (default 25). Keep it below your platform's kill timeout (30 seconds on Docker Compose here and on Render). A second signal exits immediately.
+- **Migrations** run when the worker and the API start, one at a time under a Postgres advisory lock.
+- **Configuration** comes only from environment variables. `.env.example` documents every one, and each app's tests fail if a variable it reads is missing from that file.
+
 ### Docker Compose
 
-`docker-compose.yml` runs Postgres, the worker, the API, and the dashboard. Migrations run automatically when the worker and API start. For production, set real values in `.env`, put a TLS-terminating reverse proxy in front of the API and dashboard, and back up the Postgres volume.
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+`docker-compose.yml` runs Postgres, the worker, the API (<http://localhost:8080>) and the dashboard (<http://localhost:3000>). Each service waits for the one it depends on to report healthy. Compose builds `DATABASE_URL` for the containers from `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB`, and publishes Postgres on `127.0.0.1` only.
+
+For production:
+
+1. Change `POSTGRES_PASSWORD`.
+2. Put a TLS-terminating reverse proxy in front of the API and dashboard, and set `TRUST_PROXY=true`.
+3. Back up the `pgdata` volume.
+
+Compose v2.24 or newer is required; on Debian or Ubuntu, install the `docker-compose-plugin` package.
 
 ### Render (one-click)
 
-The repository includes a `render.yaml` blueprint that creates a managed Postgres database, the API as a web service, and the worker as a background worker.
+`render.yaml` is a Blueprint. It creates a managed Postgres database, the API as a web service (health-checked on `/healthz`), and the worker as a background worker. Both services are built from their Dockerfiles, and the database's connection string is wired into both.
 
 1. Fork the repository.
 2. In Render, choose **New → Blueprint** and select your fork.
-3. Set `NEXT_PUBLIC_API_URL` once the API URL is known.
+3. Review the plans in `render.yaml` (Starter services and a `basic-256mb` database), then apply.
+4. Note the API's URL, e.g. `https://sepscope-api.onrender.com`, for the dashboard.
 
 ### Dashboard on Vercel
 
-1. Import the repository into Vercel and set the root directory to `apps/web`.
-2. Set `NEXT_PUBLIC_API_URL` to your deployed API URL.
+1. Import the repository into Vercel. Set the **Root Directory** to `apps/web`. Vercel detects Next.js and the pnpm workspace, and the default build settings work.
+2. Set `NEXT_PUBLIC_API_URL` to your deployed API URL, e.g. the Render URL above. The dashboard reads it server-side at request time; as with any Vercel environment variable, a change takes effect on the next deployment.
+3. Optionally set `LOG_LEVEL`. Leave `PORT` and `HOSTNAME` unset, since Vercel manages them.
+
+The dashboard's `output: "standalone"` setting only affects the Docker image; Vercel ignores it.
 
 ## Example Usage
 
@@ -321,7 +361,7 @@ Browsers show the file even when the CORS header is missing. Wallets running in 
 The worker cannot reach the internet. Check outbound network access, proxy settings, and DNS in the environment where the worker runs.
 
 **The dashboard shows no anchors.**
-Make sure the worker is running and has completed at least one interval, and that `NEXT_PUBLIC_API_URL` points at the API. Check the worker logs with `docker compose logs worker`.
+Make sure the worker is running and has completed at least one interval, and that `NEXT_PUBLIC_API_URL` (or `API_URL`) points at the API. Check `docker compose ps` for unhealthy services and the worker logs with `docker compose logs worker`.
 
 **The worker exits on startup with a validation error.**
 An entry in `anchors.json` is invalid. The error message names the entry and the field.

@@ -31,7 +31,13 @@ async function setup(registry: unknown = [{ domain: "a.example", network: "testn
     clearTimeout: vi.fn(),
     now: () => 0,
   };
-  const env = { DATABASE_URL: "postgres://test", ANCHORS_FILE: anchorsFile, CHECK_INTERVAL_MINUTES: "5" };
+  const env = {
+    DATABASE_URL: "postgres://test",
+    ANCHORS_FILE: anchorsFile,
+    CHECK_INTERVAL_MINUTES: "5",
+    WORKER_HEALTH_PORT: "0",
+    WORKER_HEALTH_HOST: "127.0.0.1",
+  };
   return { conn, migrate, close, scheduled, timers, env };
 }
 
@@ -77,6 +83,55 @@ describe("main", () => {
     const { conn, close, env } = await setup([{ domain: "not a domain", network: "testnet", name: "X" }]);
     await expect(main(env, { connect: () => conn, logger: fakeLogger() })).rejects.toThrow(/Invalid anchor registry/);
     expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it("serves /healthz: ok while cycles keep finishing, 503 once stalled, 503 without the database", async () => {
+    const { conn, timers, env } = await setup();
+    let clock = Date.parse("2026-10-02T12:00:00Z");
+    const worker = await main(env, { connect: () => conn, logger: fakeLogger(), timers, fetch: anchorFetch([]), now: () => clock });
+    await settle(conn);
+
+    const health = async () => {
+      const res = await fetch(`${worker.healthUrl}/healthz`);
+      return { status: res.status, body: await res.json() };
+    };
+    await vi.waitFor(async () =>
+      expect(await health()).toEqual({
+        status: 200,
+        body: { status: "ok", anchors: 1, lastCycleFinishedAt: "2026-10-02T12:00:00.000Z" },
+      }),
+    );
+    expect((await fetch(`${worker.healthUrl}/other`)).status).toBe(404);
+
+    clock += 2 * 5 * 60_000 + 5 * 60_000 + 1; // two intervals plus grace, with no cycle finishing
+    expect(await health()).toMatchObject({ status: 503, body: { status: "stalled" } });
+
+    vi.spyOn(conn.db, "execute").mockRejectedValueOnce(new Error("connection refused"));
+    expect(await health()).toEqual({ status: 503, body: { status: "error", error: "connection refused" } });
+
+    await worker.stop();
+    await expect(fetch(`${worker.healthUrl}/healthz`)).rejects.toThrow();
+  });
+
+  it("on stop, skips anchors that have not started yet", async () => {
+    const { conn, timers, env } = await setup(
+      Array.from({ length: 8 }, (_, i) => ({ domain: `a${i}.example`, network: "testnet", name: `A${i}` })),
+    );
+    const logger = fakeLogger();
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    // Every request waits on the gate, so the first 4 anchors (the concurrency limit) stay in flight.
+    const fetch = (async () => {
+      await gate;
+      throw new TypeError("fetch failed");
+    }) as unknown as typeof globalThis.fetch;
+    const worker = await main(env, { connect: () => conn, logger, timers, fetch });
+    await vi.waitFor(async () => expect(await conn.db.select().from(checkRuns)).toHaveLength(4));
+    const stopping = worker.stop();
+    release();
+    await stopping;
+    expect(await conn.db.select().from(checkRuns)).toHaveLength(4);
+    expect(logger.info).toHaveBeenCalledWith(expect.objectContaining({ anchors: 8, skippedAnchors: 4 }), "cycle cancelled");
   });
 
   it("rejects bad configuration before connecting", async () => {

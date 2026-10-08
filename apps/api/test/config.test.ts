@@ -10,6 +10,7 @@ describe("loadConfig", () => {
       logLevel: "info",
       rateLimitPerMinute: 120,
       trustProxy: false,
+      shutdownTimeoutMs: 25_000,
     });
   });
 
@@ -22,6 +23,7 @@ describe("loadConfig", () => {
         LOG_LEVEL: "warn",
         RATE_LIMIT_PER_MINUTE: "30",
         TRUST_PROXY: "",
+        SHUTDOWN_TIMEOUT_SECONDS: "3",
       }),
     ).toEqual({
       databaseUrl: "postgres://x",
@@ -30,6 +32,7 @@ describe("loadConfig", () => {
       logLevel: "warn",
       rateLimitPerMinute: 30,
       trustProxy: false,
+      shutdownTimeoutMs: 3000,
     });
   });
 

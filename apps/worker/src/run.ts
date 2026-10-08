@@ -60,13 +60,20 @@ export async function runAnchor(db: Database, anchor: Anchor, deps: RunDeps): Pr
 
 export interface CycleOptions extends RunDeps {
   concurrency: number;
+  /** Once aborted (on shutdown), anchors not yet started are skipped; in-flight ones finish. */
+  signal?: AbortSignal;
 }
 
 /** Checks every anchor, `concurrency` at a time. One anchor's failure never stops the others. */
 export async function runCycle(db: Database, anchors: readonly Anchor[], options: CycleOptions): Promise<void> {
   const started = Date.now();
   let failedAnchors = 0;
+  let skippedAnchors = 0;
   await forEachLimit(anchors, options.concurrency, async (anchor) => {
+    if (options.signal?.aborted) {
+      skippedAnchors++;
+      return;
+    }
     try {
       await runAnchor(db, anchor, options);
     } catch (err) {
@@ -74,5 +81,8 @@ export async function runCycle(db: Database, anchors: readonly Anchor[], options
       options.logger.error({ domain: anchor.domain, err }, "anchor run failed");
     }
   });
-  options.logger.info({ anchors: anchors.length, failedAnchors, durationMs: Date.now() - started }, "cycle finished");
+  options.logger.info(
+    { anchors: anchors.length, failedAnchors, skippedAnchors, durationMs: Date.now() - started },
+    skippedAnchors > 0 ? "cycle cancelled" : "cycle finished",
+  );
 }
